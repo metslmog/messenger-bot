@@ -14,11 +14,32 @@ const (
 	ACCESS_TOKEN = "EAADKZAAJHDtEBOzaZBWRstZCXzxpBeFZAzdpZCI7s20riY3Q8ZAMEXt97twTZABDDDl8wg7zsHRzAWVGQNM7NaYcu6hW24ZBf718UjJ7CQaZAp5OwZAQM9PgzC9UEVXpSiR6L59aFQNoIpsT3zui1QjCJGkEyZC4yqWDDc0Lb9NcFUTK2Tl5Rxe52ALcHntd5D9wQZDZD"
 	FACEBOOK_API = "https://graph.facebook.com/v17.0/116527961541255/messages?access_token=%s"
 	VERIFY_TOKEN = "test"
+	CONNECTLY_API = ""
 )
+
+func MessagesEndpoint(w http.ResponseWriter, r *http.Request) {
+	var callback Callback
+	json.NewDecoder(r.Body).Decode(&callback)
+	if callback.Object == "page" {
+		for _, entry := range callback.Entry {
+			for _, event := range entry.Messaging {
+				handleMessage(event)
+			}
+		}
+
+		w.WriteHeader(200)
+		w.Write([]byte("Got your message"))
+	} else {
+		w.WriteHeader(404)
+		w.Write([]byte("Message not supported"))
+	}
+}
 
 func handleMessage(event Messaging) {
 	msgText := strings.TrimSpace(event.Message.Text)
 	msgText = strings.ToLower(msgText)
+	shouldAskForReview := callAPI(msgText)
+
 	//thanksSentiment = event.
 	var response Message
 	feedbackScreens := event.Messaging_Feedback.Feedback_Screens
@@ -31,15 +52,33 @@ func handleMessage(event Messaging) {
 			feedback_store = append(feedback_store, Feedback{rating, follow_up})
 			response = Message{Text: "Thank you for your review!"}
 		}
-	} else {
-		switch msgText {
-		case "thanks", "ty", "thank you":
-			response = buildFeedbackTemplate()
-		default:
-		}
+	} else if (shouldAskForReview) {
+		response = buildFeedbackTemplate()
 	}
 
 	SendResponse(event, response)
+}
+
+func callAPI(msgText string) bool {
+	input := Input {
+		message: msgText,
+	}
+	body := new(bytes.Buffer)
+	json.NewEncoder(body).Encode(&input)
+	req, err := http.NewRequest("POST", CONNECTLY_API, body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	var response Resp
+	json.NewDecoder(resp.Body).Decode(&response)
+	if (response.isReview) {
+		feedback_store = append(feedback_store, Feedback{Rating: response.reviewScore, Follow_Up: msgText,})
+	} 
+
+	return response.shouldAskForReview
 }
 
 func buildFeedbackTemplate() Message {

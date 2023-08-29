@@ -1,16 +1,5 @@
 package lib
 
-import (
-	//"bytes"
-	//"encoding/json"
-	//"fmt"
-	//"log"
-	//"net/http"
-	//"os"
-	//"strings"
-	//"github.com/gorilla/mux"
-)
-
 type Callback struct {
 	Object string `json:"object,omitempty"`
 	Entry  []struct {
@@ -98,8 +87,29 @@ type Follow_Up struct {
 }
 
 type Feedback struct {
-	Rating string
+	Rating int
 	Follow_Up string
+	Timestamp int64
 }
 
 var feedback_store []Feedback
+
+type Input struct {
+	message string `json:"message,omitempty"`
+}
+
+type Resp struct {
+	isReview bool `json:"isReview,omitempty"`
+	shouldAskForReview bool `json:"shouldAskForReview,omitempty"`
+	reviewScore int `json:"reviewScore,omitempty"`
+}
+
+type Datapoint struct {
+	x int64
+	y int64
+}
+
+type Interval struct {
+	feedback []Feedback
+}
+//intervals []Interval
